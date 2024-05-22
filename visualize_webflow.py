@@ -57,7 +57,7 @@ def strip_ns(t):
     
 def process_transition(id, on, prefix, to, trflags):
     global out, nodes, dynCounter
-    print '#%s on=%s to=%s' % (id,on,to)
+    print('#%s on=%s to=%s' % (id,on,to))
     if on in skipTransitions or to in skipStates:
         return
     if '${' in to:
@@ -100,17 +100,17 @@ def process_state(prefix, t, flags=''):
 
 def merge_nodes(nodes, prefix):
     # build a cross-reference
-    for id,node in nodes.items():
+    for id,node in list(nodes.items()):
         node['to'] = set()
         node['from'] = set()
-    for id,node in nodes.items():
+    for id,node in list(nodes.items()):
         for ref in node['refs']:
             to = ref['to']
             if to in nodes and id != to:
                 node['to'] |= {to}
                 nodes[to]['from'] |= {id}
     # merge nodes
-    for id,node in nodes.items():
+    for id,node in list(nodes.items()):
         if len(node['to']) < 2:
             continue
         frommap = {}
@@ -122,7 +122,7 @@ def merge_nodes(nodes, prefix):
                     frommap[ids]=[]
                 frommap[ids].append(t)
         if len(frommap) > 1:
-            for ids,list1 in frommap.items():
+            for ids,list1 in list(frommap.items()):
                 if len(list1) > 1:
                     # print "# %s: (from=%s) list1=%s" % (id, ids, list1)
                     tomerge = set()
@@ -139,7 +139,7 @@ def merge_nodes(nodes, prefix):
                     # merge
                     if len(tomerge):
                         if args.verbose:
-                            print "# merging: %s" % tomerge
+                            print("# merging: %s" % tomerge)
                         tomerge = list(tomerge)
                         merged = tomerge[0]
                         nodes[merged]['label'] = ' / '.join(nodes[x]['label'] for x in sorted(tomerge))
@@ -162,7 +162,7 @@ def merge_nodes(nodes, prefix):
 def split_states(nodes, prefix):
     splitStates0 = {}
     origSplitRefs = {}
-    for id,node in nodes.items():
+    for id,node in list(nodes.items()):
         thisrefs = {}
         for ref in node['refs']:
             to = ref['to']
@@ -173,7 +173,7 @@ def split_states(nodes, prefix):
             elif to in splitStates or to[len(prefix):] in splitStates:
                 if to in splitStates0:
                     if args.verbose:
-                        print '# splitting %s' % to
+                        print('# splitting %s' % to)
                     to0 = to
                     to += str(splitStates0[to])
                     splitStates0[to0] += 1
@@ -198,17 +198,17 @@ def post_process_flow(nodes, prefix):
     while i < maxIter and merge_nodes(nodes, prefix):
         i += 1
     if i == maxIter:
-        print "# error: merge_nodes internal error : too many iterations"
+        print("# error: merge_nodes internal error : too many iterations")
     split_states(nodes, prefix)
             
 def process_flow(id, flowXml):
     global out, nodes, extrefs, prefixN, clusterPrefix
     if args.verbose:
-        print 'Processing flow %s' % id
+        print('Processing flow %s' % id)
     prefix = str(prefixN) + "."
     prefixN += 1
     nodes = {}
-    print >>out, '  subgraph %s { label=%s; color="grey"; ' % (label(clusterPrefix + id), label(id))
+    print('  subgraph %s { label=%s; color="grey"; ' % (label(clusterPrefix + id), label(id)), file=out)
     color = "red" if id == "start" else "orange"
     startStateLabel = 'start-state'
     startState = flowXml.get('start-state')
@@ -217,7 +217,7 @@ def process_flow(id, flowXml):
         for t in flowXml:
             if re.match(r'.*-state$', t.tag):
                 startState = t.get('id')
-                if args.verbose: print '# start state: %s' % startState
+                if args.verbose: print('# start state: %s' % startState)
                 break
     nodes[id]={'type':'flow', 'pos':len(nodes), 'label':id, 'flags':(' style="filled,bold" fillcolor="%s"' % color),
         'refs':[{'label':startStateLabel, 'to':prefix + startState, 'flags':''}]
@@ -233,19 +233,19 @@ def process_flow(id, flowXml):
     for t in flowXml.findall('flow:end-state',ns):
         process_state(prefix, t, ' shape=doubleoctagon')
     post_process_flow(nodes, prefix)
-    for id,node in sorted(nodes.items(), key=lambda t: t[1]['pos']):
+    for id,node in sorted(list(nodes.items()), key=lambda t: t[1]['pos']):
         if 'external' not in node:
-            print >>out, '    %s [label=%s%s]; ' % (label(id), label(node['label']), node['flags'])
+            print('    %s [label=%s%s]; ' % (label(id), label(node['label']), node['flags']), file=out)
         for ref in node['refs']:
             if ref['to'] and id != ref['to']:
                 if 'external' not in ref:
-                    print >>out, '    %s->%s [label=%s%s];' % (label(id), label(ref['to']), label(ref['label']), ref['flags'])
+                    print('    %s->%s [label=%s%s];' % (label(id), label(ref['to']), label(ref['label']), ref['flags']), file=out)
                 else:
                     ref = ref.copy()
                     ref['from'] = id
                     ref['node'] = nodes[ref['to']]
                     extrefs.append(ref)
-    print >>out, '  }'
+    print('  }', file=out)
 
 def read_flow_registry(webflowXmlPaths):
     global out, extrefs, clusterPrefix, prefixN, dynCounter
@@ -254,7 +254,7 @@ def read_flow_registry(webflowXmlPaths):
     dynCounter = 0
     extrefs = []
     for webflowXmlPath in glob.glob(webflowXmlPaths):
-        if args.verbose: print "# processing %s" % webflowXmlPath
+        if args.verbose: print("# processing %s" % webflowXmlPath)
         webflowXml = ET.parse(webflowXmlPath).getroot()
         webflowXmlDir = os.path.dirname(os.path.abspath(webflowXmlPath))
         if webflowXml.tag == '{http://www.springframework.org/schema/webflow}flow':
@@ -283,8 +283,8 @@ def read_flow_registry(webflowXmlPaths):
                     flowXml = ET.parse(webflowXmlPath).getroot()
                     process_flow(id, flowXml)
         for ref in extrefs:
-            print >>out, '  %s [label=%s%s]; ' % (label(ref['to']), label(ref['node']['label']), ref['node']['flags'])
-            print >>out, '  %s->%s [label=%s%s];' % (label(ref['from']), label(ref['to']), label(ref['label']), ref['flags'])
+            print('  %s [label=%s%s]; ' % (label(ref['to']), label(ref['node']['label']), ref['node']['flags']), file=out)
+            print('  %s->%s [label=%s%s];' % (label(ref['from']), label(ref['to']), label(ref['label']), ref['flags']), file=out)
         
 def process_input(webflowXmlPath, output):
     global out
@@ -293,12 +293,12 @@ def process_input(webflowXmlPath, output):
     else:
         out = sys.stdout
     if output or not args.split:
-        print >>out, 'strict digraph X {'
-        print >>out, ' size="20,20"; overlap=false;concentrate=true;'#splines=false;'
-        print >>out, ' compound=true;'
+        print('strict digraph X {', file=out)
+        print(' size="20,20"; overlap=false;concentrate=true;', file=out)#splines=false;'
+        print(' compound=true;', file=out)
     read_flow_registry(webflowXmlPath)
     if output or not args.split:
-        print >>out, '}'
+        print('}', file=out)
     if output:
         out.close()
         out = sys.stdout
